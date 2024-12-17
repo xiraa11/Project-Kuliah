@@ -14,7 +14,7 @@ kategoris = [
 barangs = []
 pesanans = []
 keranjangs = []
-
+# cihuyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
 curr_user = None
 
 class User:
