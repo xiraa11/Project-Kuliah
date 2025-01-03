@@ -415,12 +415,12 @@ def delete_barang():
 
         read_barang()
         print(Fore.LIGHTWHITE_EX)
-        
+
         barang_id = input("Masukkan ID Barang yang ingin dihapus: ").strip()
         if not barang_id.isdigit():
             print(Fore.LIGHTRED_EX + "Error: ID barang harus berupa angka.")
             return
-        
+
         barang_id = int(barang_id)
         barang = next((b for b in barangs if b.id == barang_id and b.penjual_id == curr_user.id), None)
 
@@ -429,23 +429,98 @@ def delete_barang():
             return
 
         barangs.remove(barang)
-        
-        for i, b in enumerate(barangs):
-            b.id = i + 1
-                   
+        update_barang_ids()
+
         os.system("cls")
         print(Fore.LIGHTGREEN_EX)
         print("==========================================")
         print(f"   Barang dengan ID {barang.id} berhasil dihapus.   ")
         print("==========================================")
-    
+
     except Exception as e:
         print(Fore.LIGHTRED_EX)
         print("==========================================")
         print(f"     Error pas menghapus barang: {e}     ")
         print("==========================================")
 
+def update_barang_ids():
+    for index, barang in enumerate(barangs, 1):
+        barang.id = index
+
 def checkout():
+    try:
+        if not curr_user or curr_user.role != "pembeli":
+            print("Error: Hanya pembeli yang dapat checkout.")
+            return
+
+        userkeran = [k for k in keranjangs if k.user_id == curr_user.id]
+        if not userkeran:
+            print(Fore.LIGHTWHITE_EX + "==========================================")
+            print(Fore.LIGHTRED_EX + "             Keranjang kosong.            ")
+            print(Fore.LIGHTWHITE_EX + "==========================================")
+            return
+
+        print(Fore.LIGHTMAGENTA_EX + "\n==========================================")
+        print(Fore.LIGHTWHITE_EX + "             Keranjang Belanja            ")
+        print(Fore.LIGHTMAGENTA_EX + "==========================================")
+        for i, keranitem in enumerate(userkeran, 1):
+            barang = next((b for b in barangs if b.id == keranitem.barang_id), None)
+            if barang:
+                print(f"| {i}. {barang.nama} - Harga: {barang.harga} - Quantity: {keranitem.quantity} |")
+            else:
+                print(f"| {i}. Barang dengan ID {keranitem.barang_id} tidak ditemukan. |")
+
+        pilh = input(Fore.LIGHTWHITE_EX + "\nPilih index barang yang ingin di-checkout (misal: 1,2,3): ").strip()
+        piliha = [int(i) - 1 for i in pilh.split(",") if i.isdigit()]
+
+        terpil = [userkeran[i] for i in piliha if i < len(userkeran)]
+
+        if not terpil:
+            os.system("cls")
+            print(Fore.LIGHTWHITE_EX + "==========================================")
+            print(Fore.LIGHTRED_EX + "Tidak ada barang yang dipilih untuk checkout.")
+            print(Fore.LIGHTWHITE_EX + "==========================================")
+            return checkout()
+
+        total_harga = sum(next((b.harga * k.quantity for b in barangs if b.id == k.barang_id), 0) for k in terpil)
+        print(Fore.LIGHTBLUE_EX + "==========================================")
+        print(f"\nTotal Harga: {total_harga}")
+        print("==========================================")
+
+        print(Fore.LIGHTWHITE_EX + "\nMetode Pembayaran: \n1. Transfer Bank\n2. E-Wallet\n3. Tunai")
+        metodeinp = input("Pilih metode pembayaran (1/2/3): ").strip()
+        metodebayar = {"1": "Transfer Bank", "2": "E-Wallet", "3": "Tunai"}.get(metodeinp, None)
+
+        if not metodebayar:
+            print(Fore.LIGHTRED_EX + "Metode pembayaran tidak valid.")
+            return
+
+        try:
+            nominal_bayar = int(input(Fore.LIGHTWHITE_EX + "Masukkan nominal pembayaran: "))
+            if nominal_bayar < total_harga:
+                print(Fore.LIGHTRED_EX + "Nominal pembayaran kurang dari total harga.")
+                return
+        except ValueError:
+            print(Fore.LIGHTRED_EX + "Input nominal tidak valid.")
+            return
+
+        for k in terpil:
+            barang = next((b for b in barangs if b.id == k.barang_id), None)
+            if barang:
+                barang.quantity -= k.quantity
+
+        pesanans.append(Orders(curr_user.id, total_harga, "pending", datetime.now(), metodebayar))
+        keranjangs[:] = [k for k in keranjangs if k.user_id != curr_user.id or k not in terpil]
+        print(Fore.LIGHTGREEN_EX)
+        print("==========================================")
+        print("            Checkout Berhasil!            ")
+        print("==========================================")
+    except Exception as e:
+        print(Fore.LIGHTRED_EX)
+        print("==========================================")
+        print(f"         Error saat checkout: {e}        ")
+        print("==========================================")
+
     try:
         if not curr_user or curr_user.role != "pembeli":
             print("Error: Hanya pembeli yang dapat checkout.")
